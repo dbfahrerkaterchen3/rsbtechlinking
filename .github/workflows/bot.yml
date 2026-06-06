@@ -1,5 +1,6 @@
 name: 24/7 Discord Bot with Webview
 
+
 on:
   push:
     branches: [ "main" ]
