@@ -1,15 +1,13 @@
-name: 24/7 Discord Bot with Webview
-
+name: 24/7 Discord Bot
 
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:
+  workflow_dispatch:      # Garantiert, dass der "Run workflow" Button da ist!
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
 
     steps:
     - name: Code auschecken
@@ -23,8 +21,7 @@ jobs:
     - name: Abhängigkeiten installieren
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        # Installiert ein Tool, das uns eine öffentliche URL schenkt
+        pip install discord.py python-dotenv fastapi uvicorn httpx
         sudo npm install -g localtunnel
 
     - name: Discord Bot & Tunnel starten
@@ -33,11 +30,20 @@ jobs:
         DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
         DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
       run: |
-        # Startet den Tunnel für Port 8000 im Hintergrund und schreibt die URL ins Log
-        lt --port 8000 > tunnel_url.txt &
+        # 1. Den Python Bot im Hintergrund starten
+        python bot.py &
+        
+        # 2. 5 Sekunden warten, bis der Bot auf Port 8000 lauscht
         sleep 5
-        echo "🌐 DEINE ÖFFENTLICHE URL IST:"
+        
+        # 3. Den Tunnel direkt auf Localhost (127.0.0.1) ansetzen
+        lt --local-host 127.0.0.1 --port 8000 > tunnel_url.txt &
+        
+        # 4. 5 Sekunden warten, bis localtunnel die URL generiert hat
+        sleep 5
+        
+        echo "🌐 DEINE NEUE ÖFFENTLICHE URL IST:"
         cat tunnel_url.txt
         
-        # Startet deinen Bot
-        python bot.py
+        # 5. Wir halten die Action für 5 Stunden aktiv (Maximaler Bot-Betrieb)
+        sleep 18000
