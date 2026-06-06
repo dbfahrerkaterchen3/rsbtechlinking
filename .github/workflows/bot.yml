@@ -1,13 +1,14 @@
-name: Discord Bot Starter
+name: 24/7 Discord Bot with Webview
 
 on:
   push:
-    branches: [ "main" ] # Startet den Bot neu, wenn du Code hochlädst
-  workflow_dispatch:    # Erlaubt es dir, den Bot manuell per Button zu starten
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
 
     steps:
     - name: Code auschecken
@@ -22,10 +23,20 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        # Installiert ein Tool, das uns eine öffentliche URL schenkt
+        sudo npm install -g localtunnel
 
-    - name: Discord Bot starten
+    - name: Discord Bot & Tunnel starten
       env:
-        # Hier holen wir die geheimen Keys aus den Repository Secrets, die wir angelegt haben!
         DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
         DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
-      run: python bot.py
+        DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+      run: |
+        # Startet den Tunnel für Port 8000 im Hintergrund und schreibt die URL ins Log
+        lt --port 8000 > tunnel_url.txt &
+        sleep 5
+        echo "🌐 DEINE ÖFFENTLICHE URL IST:"
+        cat tunnel_url.txt
+        
+        # Startet deinen Bot
+        python bot.py
