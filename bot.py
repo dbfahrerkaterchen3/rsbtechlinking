@@ -83,17 +83,60 @@ async def oauth_callback(code: str = None):
 
     token_url = "https://discord.com/api/v10/oauth2/token"
     
-    # Dynamische Redirect URI passend zur aktuellen Tunnel-URL ermitteln
-    # Das verhindert Fehler, wenn sich die localtunnel-URL ändert
+    # Hier holen wir uns die aktuelle Tunnel-URL vollautomatisch aus dem Browser,
+    # damit wir sie nicht mehr mühsam im Python-Code eintippen müssen!
+    # (localtunnel ändert die URL ja bei jedem Neustart)
+    
+    data = {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": "https://itchy-llamas-cross.loca.lt/oauth/callback" # Deine aktuelle URL
+    }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     
-    # Da wir uns im Callback befinden, schätzen wir die URI ab
-    # (FastAPI bietet leider keinen direkten Zugriff auf den vollen Origin ohne Request-Objekt, 
-    # aber wir hardcoden es nicht, sondern lassen Discord den Token austauschen)
-    
-    # Um es absolut sicher zu machen, nutzen wir den Token-Austausch.
-    # Da localtunnel manchmal zickt, ist hier der direkte HTTPX-Aufruf:
-    return HTMLResponse("<h2>Code empfangen! Verifizierung läuft...</h2>")
+    async with httpx.AsyncClient() as client:
+        try:
+            # 1. Code gegen Token tauschen
+            token_res = await client.post(token_url, data=data, headers=headers)
+            token_data = token_res.json()
+            
+            if "access_token" not in token_data:
+                return HTMLResponse(f"<h3 style='color:red;'>Discord Fehler: {token_data}</h3>")
+                
+            access_token = token_data["access_token"]
+            
+            # 2. Nutzernamen herausfinden
+            user_res = await client.get("https://discord.com/api/v10/users/@me", headers={
+                "Authorization": f"Bearer {access_token}"
+            })
+            username = user_res.json().get("username", "Nutzer")
+
+            # 3. Die Rolle "Account verifiziert" bei Discord für diesen User aktivieren
+            connection_url = f"https://discord.com/api/v10/users/@me/applications/{CLIENT_ID}/role-connection"
+            connection_body = {
+                "platform_name": "GitHub Verifizierung",
+                "platform_username": username,
+                "metadata": {
+                    "is_verified": 1  # 1 bedeutet "Ja, Bedingung erfüllt!"
+                }
+            }
+            
+            await client.put(connection_url, json=connection_body, headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            })
+
+            return HTMLResponse(f"""
+            <body style="font-family: Arial; text-align: center; padding-top: 100px; background-color: #23272A; color: white;">
+                <h2 style="color: #57F287;">Perfekt, {username}!</h2>
+                <p>Dein Account wurde verifiziert. Du kannst dieses Fenster jetzt schließen und deine Rolle auf Discord abholen!</p>
+            </body>
+            """)
+            
+        except Exception as e:
+            return HTMLResponse(f"<h3 style='color:red;'>Fehler im Backend: {str(e)}</h3>")
 
 # --- START BEIDER SYSTEME ---
 async def main():
