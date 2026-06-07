@@ -3,7 +3,7 @@ name: 24/7 Discord Bot
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:      # Garantiert, dass der "Run workflow" Button da ist!
+  workflow_dispatch:
 
 jobs:
   run-bot:
@@ -32,18 +32,13 @@ jobs:
       run: |
         # 1. Den Python Bot im Hintergrund starten
         python bot.py &
-        
-        # 2. 5 Sekunden warten, bis der Bot auf Port 8000 lauscht
         sleep 5
         
-        # 3. Den Tunnel direkt auf Localhost (127.0.0.1) ansetzen
-        lt --local-host 127.0.0.1 --port 8000 > tunnel_url.txt &
-        
-        # 4. 5 Sekunden warten, bis localtunnel die URL generiert hat
+        # 2. Den Tunnel mit einer FESTEN Subdomain starten
+        lt --local-host 127.0.0.1 --port 8000 --subdomain rsbtech-verify > tunnel_url.txt &
         sleep 5
         
-        echo "🌐 DEINE NEUE ÖFFENTLICHE URL IST:"
+        echo "🌐 DEINE FESTE ÖFFENTLICHE URL IST:"
         cat tunnel_url.txt
         
-        # 5. Wir halten die Action für 5 Stunden aktiv (Maximaler Bot-Betrieb)
         sleep 18000
