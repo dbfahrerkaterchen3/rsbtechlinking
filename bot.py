@@ -4,6 +4,7 @@ import urllib.parse
 import discord
 from discord.ext import commands
 from fastapi import FastAPI, HTTPException
+from fastapi import Request
 from fastapi.responses import HTMLResponse
 import uvicorn
 import httpx
@@ -77,22 +78,22 @@ async def home():
     """
 
 @app.get("/oauth/callback")
-async def oauth_callback(code: str = None):
+async def oauth_callback(request: Request, code: str = None):
     if not code:
         raise HTTPException(status_code=400, detail="Kein Code vorhanden.")
 
     token_url = "https://discord.com/api/v10/oauth2/token"
     
-    # Hier holen wir uns die aktuelle Tunnel-URL vollautomatisch aus dem Browser,
-    # damit wir sie nicht mehr mühsam im Python-Code eintippen müssen!
-    # (localtunnel ändert die URL ja bei jedem Neustart)
+    # DYNAMISCH: Liest die aktuelle URL (inklusive der aktuellen loca.lt-Subdomain)
+    # direkt aus der Browser-Anfrage aus!
+    current_url = str(request.url).split('?')[0]
     
     data = {
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": "https://itchy-llamas-cross.loca.lt/oauth/callback" # Deine aktuelle URL
+        "redirect_uri": current_url
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     
@@ -103,7 +104,14 @@ async def oauth_callback(code: str = None):
             token_data = token_res.json()
             
             if "access_token" not in token_data:
-                return HTMLResponse(f"<h3 style='color:red;'>Discord Fehler: {token_data}</h3>")
+                return HTMLResponse(f"""
+                <body style="font-family: Arial; background-color: #23272A; color: white; padding: 20px;">
+                    <h3 style="color: #ED4245;">Fehler beim Token-Austausch!</h3>
+                    <p><b>Discord sagt:</b> {token_data}</p>
+                    <p><b>Gesendete URI war:</b> {current_url}</p>
+                    <p><i>Vergleiche diese URI mit deinen Einträgen im Discord Portal!</i></p>
+                </body>
+                """)
                 
             access_token = token_data["access_token"]
             
@@ -113,13 +121,13 @@ async def oauth_callback(code: str = None):
             })
             username = user_res.json().get("username", "Nutzer")
 
-            # 3. Die Rolle "Account verifiziert" bei Discord für diesen User aktivieren
+            # 3. Die Rolle bei Discord freischalten
             connection_url = f"https://discord.com/api/v10/users/@me/applications/{CLIENT_ID}/role-connection"
             connection_body = {
                 "platform_name": "GitHub Verifizierung",
                 "platform_username": username,
                 "metadata": {
-                    "is_verified": 1  # 1 bedeutet "Ja, Bedingung erfüllt!"
+                    "is_verified": 1
                 }
             }
             
