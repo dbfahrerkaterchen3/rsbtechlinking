@@ -83,9 +83,8 @@ async def oauth_callback(code: str = None):
 
     token_url = "https://discord.com/api/v10/oauth2/token"
     
-    # ⚠️ HIER TRÄGST DU DEINE AKTUELL LAUFENDE TUNNEL-URL EIN!
-    # Ersetze das 'DEIN-BOT-NAME' durch das, was gerade in deinem GitHub-Log steht!
-    TUNNEL_URL = "https://DEIN-BOT-NAME.loca.lt" 
+    # 🔒 DIESE URL IST JETZT DURCH DIE YML FESTGEZURRT UND ÄNDERT SICH NIE WIEDER!
+    TUNNEL_URL = "https://rsbtech-verify.loca.lt" 
     
     data = {
         "client_id": CLIENT_ID,
@@ -98,7 +97,6 @@ async def oauth_callback(code: str = None):
     
     async with httpx.AsyncClient() as client:
         try:
-            # 1. Code gegen Token tauschen
             token_res = await client.post(token_url, data=data, headers=headers)
             token_data = token_res.json()
             
@@ -113,20 +111,16 @@ async def oauth_callback(code: str = None):
                 
             access_token = token_data["access_token"]
             
-            # 2. Nutzernamen herausfinden
             user_res = await client.get("https://discord.com/api/v10/users/@me", headers={
                 "Authorization": f"Bearer {access_token}"
             })
             username = user_res.json().get("username", "Nutzer")
 
-            # 3. Die Rolle bei Discord freischalten
             connection_url = f"https://discord.com/api/v10/users/@me/applications/{CLIENT_ID}/role-connection"
             connection_body = {
-                "platform_name": "GitHub Verifizierung",
+                "platform_name": "Verifizierung",
                 "platform_username": username,
-                "metadata": {
-                    "is_verified": 1
-                }
+                "metadata": {"is_verified": 1}
             }
             
             await client.put(connection_url, json=connection_body, headers={
