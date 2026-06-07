@@ -76,24 +76,23 @@ async def home():
         </body>
     </html>
     """
-
 @app.get("/oauth/callback")
-async def oauth_callback(request: Request, code: str = None):
+async def oauth_callback(code: str = None):
     if not code:
         raise HTTPException(status_code=400, detail="Kein Code vorhanden.")
 
     token_url = "https://discord.com/api/v10/oauth2/token"
     
-    # DYNAMISCH: Liest die aktuelle URL (inklusive der aktuellen loca.lt-Subdomain)
-    # direkt aus der Browser-Anfrage aus!
-    current_url = str(request.url).split('?')[0]
+    # ⚠️ HIER TRÄGST DU DEINE AKTUELL LAUFENDE TUNNEL-URL EIN!
+    # Ersetze das 'DEIN-BOT-NAME' durch das, was gerade in deinem GitHub-Log steht!
+    TUNNEL_URL = "https://DEIN-BOT-NAME.loca.lt" 
     
     data = {
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": current_url
+        "redirect_uri": f"{TUNNEL_URL}/oauth/callback"
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     
@@ -108,8 +107,7 @@ async def oauth_callback(request: Request, code: str = None):
                 <body style="font-family: Arial; background-color: #23272A; color: white; padding: 20px;">
                     <h3 style="color: #ED4245;">Fehler beim Token-Austausch!</h3>
                     <p><b>Discord sagt:</b> {token_data}</p>
-                    <p><b>Gesendete URI war:</b> {current_url}</p>
-                    <p><i>Vergleiche diese URI mit deinen Einträgen im Discord Portal!</i></p>
+                    <p><b>Gesendete URI war:</b> {TUNNEL_URL}/oauth/callback</p>
                 </body>
                 """)
                 
